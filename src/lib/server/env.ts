@@ -37,20 +37,29 @@ export function isVercelProduction(): boolean {
 }
 
 export function getUpstashRedisConfig(): UpstashRedisConfig | null {
-  const url = readOptionalEnv("UPSTASH_REDIS_REST_URL");
-  const token = readOptionalEnv("UPSTASH_REDIS_REST_TOKEN");
+  const kvUrl = readOptionalEnv("KV_REST_API_URL");
+  const kvToken = readOptionalEnv("KV_REST_API_TOKEN");
+  const upstashUrl = readOptionalEnv("UPSTASH_REDIS_REST_URL");
+  const upstashToken = readOptionalEnv("UPSTASH_REDIS_REST_TOKEN");
 
-  if (!url && !token) {
+  const hasKvCredentials = Boolean(kvUrl || kvToken);
+  const hasUpstashCredentials = Boolean(upstashUrl || upstashToken);
+
+  if (!hasKvCredentials && !hasUpstashCredentials) {
     return null;
   }
 
-  if (!url || !token) {
-    throw new ServerConfigError(
-      "UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN must both be set",
-    );
+  if (kvUrl && kvToken) {
+    return { url: kvUrl, token: kvToken };
   }
 
-  return { url, token };
+  if (upstashUrl && upstashToken) {
+    return { url: upstashUrl, token: upstashToken };
+  }
+
+  throw new ServerConfigError(
+    "Redis REST credentials are incomplete. Set KV_REST_API_URL and KV_REST_API_TOKEN, or UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN.",
+  );
 }
 
 export function hasRedisConfig(): boolean {

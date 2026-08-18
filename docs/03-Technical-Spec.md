@@ -227,7 +227,7 @@ All cache access goes through **`lib/cache.ts`**. Callers pass a structured key;
 **Deal search-context cache:** when `/api/search` returns itineraries, the server registers each non-null `dealReference` in `lib/deal/context-cache.ts` with the originating route context (`origin`, `destination`, `departureDate`, optional `returnDate`). SerpApi booking-options lookups require this context in addition to the opaque token. TTL matches the search cache (`CACHE_TTL_SECONDS`). If context is missing, the server may fall back to parsing embedded segment data from one-way booking tokens before failing with `DEAL_UNAVAILABLE`.
 
 **Backend selection:**
-- **Production (`VERCEL_ENV=production`):** Upstash Redis REST is required (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`). Missing credentials fail safely; no silent in-memory fallback.
+- **Production (`VERCEL_ENV=production`):** Upstash Redis REST is required (`KV_REST_API_URL` + `KV_REST_API_TOKEN`, or `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`). Missing credentials fail safely; no silent in-memory fallback.
 - **Preview, local development, and tests:** in-memory backends when Redis env vars are absent.
 - **When Redis env vars are present:** Redis is used regardless of environment.
 

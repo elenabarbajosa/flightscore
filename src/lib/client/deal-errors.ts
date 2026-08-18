@@ -10,6 +10,7 @@ const DEAL_ERROR_MESSAGES: Record<
   TIMEOUT: "Opening the booking page took too long. Please try again.",
   PROVIDER_ERROR:
     "Booking lookup is temporarily unavailable. Please try again shortly.",
+  RATE_LIMITED: "Too many requests. Please try again in a few minutes.",
   INTERNAL_ERROR: "Something went wrong. Please try again.",
 };
 

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+import { assertRateLimitAllowed } from "@/lib/rate-limit";
+import { getRateLimitIdentifier } from "@/lib/server/client-ip";
+import { ServerConfigError } from "@/lib/server/errors";
 import { ProviderError } from "@/lib/provider/errors";
 import { SearchValidationError } from "@/lib/search/errors";
 import {
@@ -22,6 +25,18 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    const allowed = await assertRateLimitAllowed(
+      "search",
+      getRateLimitIdentifier(request),
+    );
+
+    if (!allowed) {
+      return NextResponse.json<SearchErrorResponse>(
+        { error: "RATE_LIMITED" },
+        { status: 429 },
+      );
+    }
+
     const searchRequest = validateSearchRequest(body);
     const response = await runSearch(searchRequest);
 
@@ -34,6 +49,13 @@ export async function POST(request: Request): Promise<Response> {
           ...(error.field ? { field: error.field } : {}),
         },
         { status: 400 },
+      );
+    }
+
+    if (error instanceof ServerConfigError) {
+      return NextResponse.json<SearchErrorResponse>(
+        { error: "INTERNAL_ERROR" },
+        { status: 500 },
       );
     }
 

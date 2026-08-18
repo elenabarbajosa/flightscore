@@ -50,7 +50,7 @@
 | T-20 | Add visual indicators for risky connections and long layovers | F3 | US-04 |
 | T-21 | Add loading, empty, and error states | F3 | US-06 |
 | T-22 | Ensure responsive design from 375 px | F3 | — |
-| T-23 | Implement per-IP rate limiting and quota-protection controls | F4 | — |
+| T-23 | Implement per-IP rate limiting and quota-protection controls | F4 | Done (app-level; configure Vercel WAF before launch) |
 | T-24 | Complete README, `.env.example`, deployment validation, and security review | F4 | — |
 
 ### Priority 2 — Desirable (improves the MVP but does not block the first usable build)
@@ -98,7 +98,7 @@ Before final delivery, execute and document these scenarios:
 | P-11 | Open at 375 px width | No horizontal scroll; controls remain usable |
 | P-12 | One-way search | Works without a return date |
 | P-13 | Results beyond 30 | **Show more** reveals additional already-scored results without a new SerpApi search |
-| P-14 | Rate limiting | More than 30 searches from one IP in 10 minutes returns a controlled error |
+| P-14 | Rate limiting | More than 10 searches from one IP in 10 minutes returns HTTP 429 `RATE_LIMITED` |
 
 ---
 
@@ -136,7 +136,7 @@ To avoid repeated discussion during development, the following decisions are con
 17. Display **`operatingCarrier`** as primary; fall back to **`marketingCarrier`** when missing; when both differ, show **`operatingCarrier`**.
 18. Layover `connectionType` is `"DOMESTIC" | "SCHENGEN" | "INTERNATIONAL"`; Schengen membership is determined from airport `countryCode` via an explicit country-code set in code.
 19. **PWA support is outside the MVP.**
-20. **Rate limiting** (30 searches / IP / 10 minutes) is required for MVP delivery and may be implemented during F4.
+20. **Rate limiting** is active: `POST /api/search` — 10 requests / IP / 10 minutes; `POST /api/deal` — 20 requests / IP / 10 minutes.
 21. Presets, expandable score breakdown, and **Show tight connections** are **Priority 1** MVP features.
 22. Unit tests are required for both **`lib/scoring.ts`** and **`lib/normalize.ts`**. Normalization tests use SerpApi fixtures/mocks, not live paid calls.
 23. A **valid itinerary** is successfully normalized, scoring-complete, within the 2-stops-per-direction rule, and rankable; risky itineraries remain valid.

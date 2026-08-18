@@ -65,7 +65,7 @@ describe("runSearch", () => {
     const cache = createSearchCacheForTests(1800);
     const key = buildSearchCacheKey(baseRequest);
 
-    cache.set(key, { currency: "EUR", results: [] });
+    await cache.set(key, { currency: "EUR", results: [] });
 
     const response = await runSearch(baseRequest, { provider, cache });
 
@@ -85,7 +85,7 @@ describe("runSearch", () => {
     await runSearch(baseRequest, { provider, cache });
 
     expect(
-      cache.get({
+      await cache.get({
         origin: "LIS",
         destination: "NRT",
         departureDate: baseRequest.departureDate,

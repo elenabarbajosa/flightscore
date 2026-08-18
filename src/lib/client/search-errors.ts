@@ -5,6 +5,7 @@ const SEARCH_ERROR_MESSAGES: Record<SearchErrorResponse["error"], string> = {
   QUOTA_EXCEEDED: "Search limit reached. Please wait a few minutes and try again.",
   PROVIDER_ERROR: "Flight search is temporarily unavailable. Please try again shortly.",
   TIMEOUT: "The search took too long. Please try again.",
+  RATE_LIMITED: "Too many requests. Please try again in a few minutes.",
   INTERNAL_ERROR: "Something went wrong. Please try again.",
 };
 

@@ -4,6 +4,12 @@ import { ProviderError } from "@/lib/provider/errors";
 import { POST } from "@/app/api/deal/route";
 
 const runDealResolutionMock = vi.fn();
+const assertRateLimitAllowedMock = vi.fn().mockResolvedValue(true);
+
+vi.mock("@/lib/rate-limit", () => ({
+  assertRateLimitAllowed: (...args: unknown[]) =>
+    assertRateLimitAllowedMock(...args),
+}));
 
 vi.mock("@/lib/deal/run-deal-resolution", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/deal/run-deal-resolution")>();
@@ -28,6 +34,8 @@ function createPostRequest(body: unknown): Request {
 describe("POST /api/deal", () => {
   beforeEach(() => {
     runDealResolutionMock.mockReset();
+    assertRateLimitAllowedMock.mockReset();
+    assertRateLimitAllowedMock.mockResolvedValue(true);
   });
 
   it("returns a safe redirect destination without provider internals", async () => {
@@ -57,6 +65,20 @@ describe("POST /api/deal", () => {
       error: "INVALID_INPUT",
       field: "dealReference",
     });
+  });
+
+  it("returns RATE_LIMITED before resolving a deal", async () => {
+    assertRateLimitAllowedMock.mockResolvedValue(false);
+
+    const response = await POST(
+      createPostRequest({
+        dealReference: "token-123",
+      }),
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({ error: "RATE_LIMITED" });
+    expect(runDealResolutionMock).not.toHaveBeenCalled();
   });
 
   it("never exposes raw provider fields in provider error responses", async () => {

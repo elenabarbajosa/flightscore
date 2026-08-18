@@ -10,6 +10,9 @@ import {
   runDealResolution,
 } from "@/lib/deal/run-deal-resolution";
 import { validateDealRequest } from "@/lib/deal/validate-deal-request";
+import { assertRateLimitAllowed } from "@/lib/rate-limit";
+import { getRateLimitIdentifier } from "@/lib/server/client-ip";
+import { ServerConfigError } from "@/lib/server/errors";
 import { ProviderError } from "@/lib/provider/errors";
 import type { DealErrorResponse } from "@/lib/types/deal";
 
@@ -39,6 +42,8 @@ function getPublicDealErrorMessage(code: DealErrorResponse["error"]): string {
       return TIMEOUT_MESSAGE;
     case "PROVIDER_ERROR":
       return PROVIDER_MESSAGE;
+    case "RATE_LIMITED":
+      return "Too many requests. Please try again in a few minutes.";
     default:
       return INTERNAL_MESSAGE;
   }
@@ -57,6 +62,18 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   try {
+    const allowed = await assertRateLimitAllowed(
+      "deal",
+      getRateLimitIdentifier(request),
+    );
+
+    if (!allowed) {
+      return NextResponse.json<DealErrorResponse>(
+        { error: "RATE_LIMITED" },
+        { status: 429 },
+      );
+    }
+
     const dealRequest = validateDealRequest(body);
     const response = await runDealResolution(dealRequest);
 
@@ -69,6 +86,13 @@ export async function POST(request: Request): Promise<Response> {
           ...(error.field ? { field: error.field } : {}),
         },
         { status: 400 },
+      );
+    }
+
+    if (error instanceof ServerConfigError) {
+      return NextResponse.json<DealErrorResponse>(
+        { error: "INTERNAL_ERROR" },
+        { status: 500 },
       );
     }
 

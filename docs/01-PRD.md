@@ -95,7 +95,7 @@ The initial focus is **long-haul travel**, where differences between itineraries
 - Operating airline shown as primary on codeshare itineraries.
 - Responsive, mobile-first design with Tailwind CSS.
 - English-only user interface for the MVP.
-- Per-IP rate limiting (30 searches / 10 minutes) before final delivery.
+- Per-IP rate limiting (`POST /api/search`: 10 requests / 10 minutes; `POST /api/deal`: 20 requests / 10 minutes) before final delivery.
 
 ### Excluded from the MVP
 
@@ -139,5 +139,5 @@ The project is considered delivered when:
 4. Expanding a result shows score sub-components and plain-English penalty explanations.
 5. SerpApi credentials are not accessible from the browser (verified in client source and the network panel).
 6. The application is usable on a 375 px-wide mobile screen without horizontal scrolling.
-7. Per-IP rate limiting (30 searches / 10 minutes) is active.
+7. Per-IP rate limiting is active (`POST /api/search`: 10 / 10 minutes; `POST /api/deal`: 20 / 10 minutes).
 8. A README exists with installation, environment-variable, and deployment instructions.

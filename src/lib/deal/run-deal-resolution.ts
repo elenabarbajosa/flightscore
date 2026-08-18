@@ -26,14 +26,14 @@ export async function runDealResolution(
   const cache = dependencies.cache ?? getDealCache();
   const contextCache = dependencies.contextCache ?? getDealContextCache();
 
-  const cached = cache.get(request.dealReference);
+  const cached = await cache.get(request.dealReference);
 
   if (cached) {
     return cached;
   }
 
   try {
-    const searchContext = resolveDealSearchContext(
+    const searchContext = await resolveDealSearchContext(
       request.dealReference,
       contextCache,
     );
@@ -58,7 +58,7 @@ export async function runDealResolution(
       sellerName: resolved.sellerName,
     };
 
-    cache.set(request.dealReference, response);
+    await cache.set(request.dealReference, response);
 
     return response;
   } catch (error) {

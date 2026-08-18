@@ -1,3 +1,4 @@
+import { getSerpApiConfig } from "@/lib/server/env";
 import type { CabinClass } from "@/lib/types/search";
 import {
   REQUESTED_CURRENCY,
@@ -13,20 +14,12 @@ const TRAVEL_CLASS_BY_CABIN: Record<CabinClass, string> = {
   FIRST: "4",
 };
 
-function readRequiredEnv(name: string): string {
-  const value = process.env[name]?.trim();
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
 export function getSerpApiEngine(): string {
-  return readRequiredEnv("SERPAPI_ENGINE");
+  return getSerpApiConfig().engine;
 }
 
 export function getSerpApiApiKey(): string {
-  return readRequiredEnv("SERPAPI_API_KEY");
+  return getSerpApiConfig().apiKey;
 }
 
 export function buildBaseQueryParams(

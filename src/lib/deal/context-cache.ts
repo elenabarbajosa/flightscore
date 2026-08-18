@@ -1,6 +1,9 @@
 import { createHash } from "node:crypto";
 
-const DEFAULT_CACHE_TTL_SECONDS = 1800;
+import { isRedisBackendEnabled, resolveRedisJsonStore } from "@/lib/cache/backend";
+import { getCacheTtlSeconds } from "@/lib/server/env";
+
+const DEAL_CONTEXT_CACHE_NAMESPACE = "flightscore:deal-context:";
 
 export interface DealSearchContext {
   origin: string;
@@ -15,68 +18,89 @@ interface CacheEntry {
 }
 
 export interface DealContextCache {
-  register(dealReference: string, context: DealSearchContext): void;
-  get(dealReference: string): DealSearchContext | null;
-  clear(): void;
-}
-
-function parseCacheTtlSeconds(): number {
-  const rawValue = process.env.CACHE_TTL_SECONDS;
-
-  if (!rawValue) {
-    return DEFAULT_CACHE_TTL_SECONDS;
-  }
-
-  const parsed = Number.parseInt(rawValue, 10);
-
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return DEFAULT_CACHE_TTL_SECONDS;
-  }
-
-  return parsed;
+  register(dealReference: string, context: DealSearchContext): Promise<void>;
+  get(dealReference: string): Promise<DealSearchContext | null>;
+  clear(): Promise<void>;
 }
 
 function hashDealReference(dealReference: string): string {
   return createHash("sha256").update(dealReference).digest("hex");
 }
 
-function createInMemoryDealContextCache(
-  ttlSeconds = parseCacheTtlSeconds(),
-): DealContextCache {
+export function buildDealContextRedisKey(dealReference: string): string {
+  return `${DEAL_CONTEXT_CACHE_NAMESPACE}${hashDealReference(dealReference)}`;
+}
+
+function createInMemoryDealContextCache(ttlSeconds: number): DealContextCache {
   const store = new Map<string, CacheEntry>();
 
   return {
-    register(dealReference, context) {
+    async register(dealReference, context) {
       store.set(hashDealReference(dealReference), {
         expiresAt: Date.now() + ttlSeconds * 1000,
         value: context,
       });
     },
-    get(dealReference) {
-      const entry = store.get(hashDealReference(dealReference));
+
+    async get(dealReference) {
+      const key = hashDealReference(dealReference);
+      const entry = store.get(key);
 
       if (!entry) {
         return null;
       }
 
       if (entry.expiresAt <= Date.now()) {
-        store.delete(hashDealReference(dealReference));
+        store.delete(key);
         return null;
       }
 
       return entry.value;
     },
-    clear() {
+
+    async clear() {
       store.clear();
     },
   };
+}
+
+function createRedisDealContextCache(ttlSeconds: number): DealContextCache {
+  const store = resolveRedisJsonStore();
+
+  return {
+    async register(dealReference, context) {
+      await store.set(
+        buildDealContextRedisKey(dealReference),
+        context,
+        ttlSeconds,
+      );
+    },
+
+    async get(dealReference) {
+      return store.get<DealSearchContext>(
+        buildDealContextRedisKey(dealReference),
+      );
+    },
+
+    async clear() {},
+  };
+}
+
+function createDealContextCache(
+  ttlSeconds = getCacheTtlSeconds(),
+): DealContextCache {
+  if (isRedisBackendEnabled()) {
+    return createRedisDealContextCache(ttlSeconds);
+  }
+
+  return createInMemoryDealContextCache(ttlSeconds);
 }
 
 let defaultDealContextCache: DealContextCache | null = null;
 
 export function getDealContextCache(): DealContextCache {
   if (!defaultDealContextCache) {
-    defaultDealContextCache = createInMemoryDealContextCache();
+    defaultDealContextCache = createDealContextCache();
   }
 
   return defaultDealContextCache;
@@ -90,14 +114,16 @@ export function resetDefaultDealContextCacheForTests(): void {
   defaultDealContextCache = null;
 }
 
-export function registerDealSearchContexts(
+export async function registerDealSearchContexts(
   results: Array<{ dealReference: string | null }>,
   context: DealSearchContext,
   cache: DealContextCache = getDealContextCache(),
-): void {
-  for (const result of results) {
-    if (result.dealReference) {
-      cache.register(result.dealReference, context);
-    }
-  }
+): Promise<void> {
+  await Promise.all(
+    results
+      .filter((result) => result.dealReference)
+      .map((result) => cache.register(result.dealReference!, context)),
+  );
 }
+
+export { DEAL_CONTEXT_CACHE_NAMESPACE };

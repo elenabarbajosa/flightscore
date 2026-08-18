@@ -46,17 +46,19 @@ describe("parseDealReferenceContext", () => {
 });
 
 describe("resolveDealSearchContext", () => {
-  it("prefers registered search context over token parsing", () => {
+  it("prefers registered search context over token parsing", async () => {
     const cache = createDealContextCacheForTests(300);
 
-    cache.register(ONE_WAY_CONNECTING_TOKEN, {
+    await cache.register(ONE_WAY_CONNECTING_TOKEN, {
       origin: "LIS",
       destination: "CDG",
       departureDate: "2026-12-20",
       returnDate: "2026-12-27",
     });
 
-    expect(resolveDealSearchContext(ONE_WAY_CONNECTING_TOKEN, cache)).toEqual({
+    await expect(
+      resolveDealSearchContext(ONE_WAY_CONNECTING_TOKEN, cache),
+    ).resolves.toEqual({
       origin: "LIS",
       destination: "CDG",
       departureDate: "2026-12-20",

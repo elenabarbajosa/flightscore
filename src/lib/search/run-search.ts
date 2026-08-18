@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { registerDealSearchContexts } from "@/lib/deal/context-cache";
 import {
   buildSearchCacheKey,
@@ -11,6 +9,7 @@ import { getFlightProvider } from "@/lib/provider";
 import { ProviderError } from "@/lib/provider/errors";
 import type { FlightProvider } from "@/lib/provider/types";
 import type { SearchRequest, SearchResponse } from "@/lib/types/search";
+import { randomUUID } from "node:crypto";
 
 export interface RunSearchDependencies {
   provider?: FlightProvider;
@@ -26,10 +25,10 @@ export async function runSearch(
   const cache = dependencies.cache ?? getSearchCache();
   const createSearchId = dependencies.createSearchId ?? randomUUID;
   const cacheKey = buildSearchCacheKey(request);
-  const cachedPayload = cache.get(cacheKey);
+  const cachedPayload = await cache.get(cacheKey);
 
   if (cachedPayload) {
-    registerDealSearchContexts(cachedPayload.results, {
+    await registerDealSearchContexts(cachedPayload.results, {
       origin: request.origin,
       destination: request.destination,
       departureDate: request.departureDate,
@@ -47,12 +46,12 @@ export async function runSearch(
   const providerResult = await provider.search(request);
   const normalized = normalizeProviderSearchResult(providerResult);
 
-  cache.set(cacheKey, {
+  await cache.set(cacheKey, {
     currency: "EUR",
     results: normalized.results,
   });
 
-  registerDealSearchContexts(normalized.results, {
+  await registerDealSearchContexts(normalized.results, {
     origin: request.origin,
     destination: request.destination,
     departureDate: request.departureDate,

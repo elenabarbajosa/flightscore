@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  buildDealContextRedisKey,
   createDealContextCacheForTests,
+  DEAL_CONTEXT_CACHE_NAMESPACE,
   resetDefaultDealContextCacheForTests,
 } from "@/lib/deal/context-cache";
 
@@ -10,27 +12,30 @@ describe("deal context cache", () => {
     resetDefaultDealContextCacheForTests();
   });
 
-  it("registers search context keyed by hashed dealReference", () => {
+  it("registers search context keyed by hashed dealReference", async () => {
     const cache = createDealContextCacheForTests(300);
 
-    cache.register("token-abc", {
+    await cache.register("token-abc", {
       origin: "LIS",
       destination: "CDG",
       departureDate: "2026-11-01",
     });
 
-    expect(cache.get("token-abc")).toEqual({
+    expect(await cache.get("token-abc")).toEqual({
       origin: "LIS",
       destination: "CDG",
       departureDate: "2026-11-01",
     });
+    expect(buildDealContextRedisKey("token-abc")).toMatch(
+      new RegExp(`^${DEAL_CONTEXT_CACHE_NAMESPACE}[a-f0-9]{64}$`),
+    );
   });
 
-  it("expires entries after the configured ttl", () => {
+  it("expires entries after the configured ttl", async () => {
     vi.useFakeTimers();
     const cache = createDealContextCacheForTests(1);
 
-    cache.register("token-abc", {
+    await cache.register("token-abc", {
       origin: "LIS",
       destination: "CDG",
       departureDate: "2026-11-01",
@@ -38,7 +43,7 @@ describe("deal context cache", () => {
 
     vi.advanceTimersByTime(1_100);
 
-    expect(cache.get("token-abc")).toBeNull();
+    expect(await cache.get("token-abc")).toBeNull();
 
     vi.useRealTimers();
   });

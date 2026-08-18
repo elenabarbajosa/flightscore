@@ -1,7 +1,10 @@
 import type { CabinClass, Itinerary, SearchRequest } from "@/lib/types/search";
 
+import { isRedisBackendEnabled, resolveRedisJsonStore } from "@/lib/cache/backend";
+import { getCacheTtlSeconds } from "@/lib/server/env";
+
 const ONE_WAY_SENTINEL = "ONE_WAY";
-const DEFAULT_CACHE_TTL_SECONDS = 1800;
+const SEARCH_CACHE_NAMESPACE = "flightscore:search:";
 
 export interface SearchCacheKey {
   origin: string;
@@ -23,25 +26,9 @@ interface CacheEntry {
 }
 
 export interface SearchCache {
-  get(key: SearchCacheKey): CachedSearchPayload | null;
-  set(key: SearchCacheKey, payload: CachedSearchPayload): void;
-  clear(): void;
-}
-
-function parseCacheTtlSeconds(): number {
-  const rawValue = process.env.CACHE_TTL_SECONDS;
-
-  if (!rawValue) {
-    return DEFAULT_CACHE_TTL_SECONDS;
-  }
-
-  const parsed = Number.parseInt(rawValue, 10);
-
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return DEFAULT_CACHE_TTL_SECONDS;
-  }
-
-  return parsed;
+  get(key: SearchCacheKey): Promise<CachedSearchPayload | null>;
+  set(key: SearchCacheKey, payload: CachedSearchPayload): Promise<void>;
+  clear(): Promise<void>;
 }
 
 export function buildSearchCacheKey(request: SearchRequest): SearchCacheKey {
@@ -66,11 +53,15 @@ export function serializeSearchCacheKey(key: SearchCacheKey): string {
   ].join("|");
 }
 
-function createInMemorySearchCache(ttlSeconds = parseCacheTtlSeconds()): SearchCache {
+export function buildSearchCacheRedisKey(key: SearchCacheKey): string {
+  return `${SEARCH_CACHE_NAMESPACE}${serializeSearchCacheKey(key)}`;
+}
+
+function createInMemorySearchCache(ttlSeconds: number): SearchCache {
   const store = new Map<string, CacheEntry>();
 
   return {
-    get(key) {
+    async get(key) {
       const serializedKey = serializeSearchCacheKey(key);
       const entry = store.get(serializedKey);
 
@@ -85,23 +76,51 @@ function createInMemorySearchCache(ttlSeconds = parseCacheTtlSeconds()): SearchC
 
       return entry.value;
     },
-    set(key, payload) {
+
+    async set(key, payload) {
       store.set(serializeSearchCacheKey(key), {
         expiresAt: Date.now() + ttlSeconds * 1000,
         value: payload,
       });
     },
-    clear() {
+
+    async clear() {
       store.clear();
     },
   };
+}
+
+function createRedisSearchCache(ttlSeconds: number): SearchCache {
+  const store = resolveRedisJsonStore();
+
+  return {
+    async get(key) {
+      return store.get<CachedSearchPayload>(buildSearchCacheRedisKey(key));
+    },
+
+    async set(key, payload) {
+      await store.set(buildSearchCacheRedisKey(key), payload, ttlSeconds);
+    },
+
+    async clear() {
+      // Redis-backed caches are shared; tests inject in-memory implementations instead.
+    },
+  };
+}
+
+function createSearchCache(ttlSeconds = getCacheTtlSeconds()): SearchCache {
+  if (isRedisBackendEnabled()) {
+    return createRedisSearchCache(ttlSeconds);
+  }
+
+  return createInMemorySearchCache(ttlSeconds);
 }
 
 let defaultSearchCache: SearchCache | null = null;
 
 export function getSearchCache(): SearchCache {
   if (!defaultSearchCache) {
-    defaultSearchCache = createInMemorySearchCache();
+    defaultSearchCache = createSearchCache();
   }
 
   return defaultSearchCache;
@@ -115,4 +134,4 @@ export function resetDefaultSearchCacheForTests(): void {
   defaultSearchCache = null;
 }
 
-export { ONE_WAY_SENTINEL };
+export { ONE_WAY_SENTINEL, SEARCH_CACHE_NAMESPACE };

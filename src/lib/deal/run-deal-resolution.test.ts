@@ -28,7 +28,7 @@ describe("runDealResolution", () => {
 
   it("resolves a deal through the provider and caches the safe destination", async () => {
     const contextCache = createDealContextCacheForTests(300);
-    contextCache.register(DEAL_REFERENCE, SEARCH_CONTEXT);
+    await contextCache.register(DEAL_REFERENCE, SEARCH_CONTEXT);
 
     const resolveDeal = vi.fn().mockResolvedValue({
       options: [
@@ -83,7 +83,7 @@ describe("runDealResolution", () => {
 
   it("maps separate-ticket-only provider results to DEAL_UNAVAILABLE", async () => {
     const contextCache = createDealContextCacheForTests(300);
-    contextCache.register("token-separate", SEARCH_CONTEXT);
+    await contextCache.register("token-separate", SEARCH_CONTEXT);
 
     const provider: FlightProvider = {
       search: vi.fn(),
@@ -108,7 +108,7 @@ describe("runDealResolution", () => {
 
   it("maps expired provider tokens to DEAL_EXPIRED", async () => {
     const contextCache = createDealContextCacheForTests(300);
-    contextCache.register("token-expired", SEARCH_CONTEXT);
+    await contextCache.register("token-expired", SEARCH_CONTEXT);
 
     const provider: FlightProvider = {
       search: vi.fn(),

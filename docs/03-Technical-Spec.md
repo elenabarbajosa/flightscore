@@ -197,7 +197,13 @@ The response must not include raw provider payloads, booking tokens, `post_data`
 
 **Cost control:** a View deal click triggers at most one SerpApi booking-options lookup on cache miss. Search, scoring, presets, sliders, and Show more trigger zero booking-option calls.
 
-**Rate limiting note:** `/api/deal` must be rate-limited before public production launch. Full per-IP rate limiting may be implemented during F4, but the route must remain structured so limits can be added cleanly.
+**Rate limiting:** application-level per-IP limits protect SerpApi quota:
+- `POST /api/search`: **10 requests / IP / 10 minutes**
+- `POST /api/deal`: **20 requests / IP / 10 minutes**
+
+Blocked requests return HTTP **429** with `{ "error": "RATE_LIMITED" }`. Rate limiting is enforced in `lib/rate-limit.ts` before provider/deal work begins. IP identifiers are hashed before storage.
+
+**Vercel WAF (pre-launch):** before public launch, also configure Vercel Firewall/WAF rate-limit rules for `/api/search` and `/api/deal` as defense-in-depth. Application-level limiting remains the source of precise API error behavior.
 
 ---
 
@@ -220,7 +226,17 @@ All cache access goes through **`lib/cache.ts`**. Callers pass a structured key;
 
 **Deal search-context cache:** when `/api/search` returns itineraries, the server registers each non-null `dealReference` in `lib/deal/context-cache.ts` with the originating route context (`origin`, `destination`, `departureDate`, optional `returnDate`). SerpApi booking-options lookups require this context in addition to the opaque token. TTL matches the search cache (`CACHE_TTL_SECONDS`). If context is missing, the server may fall back to parsing embedded segment data from one-way booking tokens before failing with `DEAL_UNAVAILABLE`.
 
-**Initial implementation:** use the simplest viable backing store behind the abstraction (e.g. in-process memory). Upgrade the implementation later without changing route handlers or key structure.
+**Backend selection:**
+- **Production (`VERCEL_ENV=production`):** Upstash Redis REST is required (`UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`). Missing credentials fail safely; no silent in-memory fallback.
+- **Preview, local development, and tests:** in-memory backends when Redis env vars are absent.
+- **When Redis env vars are present:** Redis is used regardless of environment.
+
+**Redis key namespaces (safe payloads only):**
+- `flightscore:search:…`
+- `flightscore:deal-context:…` (hashed `dealReference`)
+- `flightscore:deal-resolution:…` (hashed `dealReference`)
+
+No raw SerpApi payloads, API keys, or booking tokens are stored in Redis.
 
 ---
 
@@ -297,7 +313,7 @@ Suggested logical structure (exact filenames may adapt to standard Next.js conve
 - `/api/search` validates and sanitizes all input before use.
 - `/api/deal` validates opaque `dealReference` input, resolves booking options server-side only, validates every redirect hop, and returns only safe external HTTPS destinations.
 - Redirect safety: HTTPS-only destinations, DNS-aware SSRF checks, blocked private/internal/metadata addresses, and no client-supplied destination URLs.
-- **Rate limiting is an MVP security requirement:** 30 searches per IP / 10 minutes. `/api/deal` must also be rate-limited before public production launch; full implementation may be added during **F4**.
+- **Rate limiting is active:** `POST /api/search` allows 10 requests per IP per 10 minutes; `POST /api/deal` allows 20 requests per IP per 10 minutes. Excess requests return HTTP 429 `RATE_LIMITED`.
 - Use same-origin server routes; do not expose SerpApi credentials through CORS or client requests.
 - No cookies or storage of personal data in the MVP.
 - Add hard controls / alerts around SerpApi quota to prevent unexpected spending.

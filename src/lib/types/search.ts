@@ -64,6 +64,7 @@ export type SearchErrorCode =
   | "QUOTA_EXCEEDED"
   | "PROVIDER_ERROR"
   | "TIMEOUT"
+  | "RATE_LIMITED"
   | "INTERNAL_ERROR";
 
 export interface SearchErrorResponse {

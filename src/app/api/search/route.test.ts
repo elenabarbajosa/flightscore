@@ -5,6 +5,12 @@ import { ProviderError } from "@/lib/provider/errors";
 import { POST } from "@/app/api/search/route";
 
 const runSearchMock = vi.fn();
+const assertRateLimitAllowedMock = vi.fn().mockResolvedValue(true);
+
+vi.mock("@/lib/rate-limit", () => ({
+  assertRateLimitAllowed: (...args: unknown[]) =>
+    assertRateLimitAllowedMock(...args),
+}));
 
 vi.mock("@/lib/search/run-search", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/search/run-search")>();
@@ -33,6 +39,8 @@ function createPostRequest(body: unknown): Request {
 describe("POST /api/search", () => {
   beforeEach(() => {
     runSearchMock.mockReset();
+    assertRateLimitAllowedMock.mockReset();
+    assertRateLimitAllowedMock.mockResolvedValue(true);
   });
 
   it("returns a valid one-way response", async () => {
@@ -202,6 +210,24 @@ describe("POST /api/search", () => {
 
     expect(response.status).toBe(502);
     await expect(response.json()).resolves.toEqual({ error: "PROVIDER_ERROR" });
+  });
+
+  it("returns RATE_LIMITED before calling the provider", async () => {
+    assertRateLimitAllowedMock.mockResolvedValue(false);
+
+    const response = await POST(
+      createPostRequest({
+        origin: "LIS",
+        destination: "NRT",
+        departureDate: futureDate(30),
+        passengers: 1,
+        cabinClass: "ECONOMY",
+      }),
+    );
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toEqual({ error: "RATE_LIMITED" });
+    expect(runSearchMock).not.toHaveBeenCalled();
   });
 
   it("returns INTERNAL_ERROR for unexpected failures", async () => {

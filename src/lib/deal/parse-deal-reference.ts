@@ -128,9 +128,9 @@ export function parseDealReferenceContext(
   }
 }
 
-export function resolveDealSearchContext(
+export async function resolveDealSearchContext(
   dealReference: string,
   cache: DealContextCache = getDealContextCache(),
-): DealSearchContext | null {
-  return cache.get(dealReference) ?? parseDealReferenceContext(dealReference);
+): Promise<DealSearchContext | null> {
+  return (await cache.get(dealReference)) ?? parseDealReferenceContext(dealReference);
 }

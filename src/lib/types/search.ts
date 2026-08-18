@@ -63,7 +63,8 @@ export type SearchErrorCode =
   | "INVALID_INPUT"
   | "QUOTA_EXCEEDED"
   | "PROVIDER_ERROR"
-  | "TIMEOUT";
+  | "TIMEOUT"
+  | "INTERNAL_ERROR";
 
 export interface SearchErrorResponse {
   error: SearchErrorCode;

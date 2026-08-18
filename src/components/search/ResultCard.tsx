@@ -13,6 +13,7 @@ import {
 import { RiskBadges } from "@/components/search/RiskBadges";
 import { RouteVisualization } from "@/components/search/RouteVisualization";
 import { ScoreBreakdown } from "@/components/search/ScoreBreakdown";
+import { ViewDealButton } from "@/components/search/ViewDealButton";
 
 interface ResultCardProps {
   rank: number;
@@ -165,13 +166,18 @@ export function ResultCard({ rank, result }: ResultCardProps) {
           <ScoreBreakdown breakdown={score} />
         </div>
 
-        <div className="flex items-center justify-between border-t border-neutral-100 pt-3 lg:flex-col lg:items-end lg:justify-start lg:border-t-0 lg:pt-0">
-          <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-500 lg:hidden">
-            Price
-          </p>
-          <p className="text-2xl font-semibold tracking-tight text-neutral-900 lg:text-right">
-            {formatPriceEUR(itinerary.price)}
-          </p>
+        <div className="flex flex-col items-stretch justify-between gap-2 border-t border-neutral-100 pt-3 lg:items-end lg:border-t-0 lg:pt-0">
+          <div className="flex w-full items-center justify-between lg:flex-col lg:items-end">
+            <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-500 lg:hidden">
+              Price
+            </p>
+            <p className="text-2xl font-semibold tracking-tight text-neutral-900 lg:text-right">
+              {formatPriceEUR(itinerary.price)}
+            </p>
+          </div>
+          {itinerary.dealReference ? (
+            <ViewDealButton dealReference={itinerary.dealReference} />
+          ) : null}
         </div>
       </div>
     </article>

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { registerDealSearchContexts } from "@/lib/deal/context-cache";
 import {
   buildSearchCacheKey,
   getSearchCache,
@@ -28,6 +29,13 @@ export async function runSearch(
   const cachedPayload = cache.get(cacheKey);
 
   if (cachedPayload) {
+    registerDealSearchContexts(cachedPayload.results, {
+      origin: request.origin,
+      destination: request.destination,
+      departureDate: request.departureDate,
+      returnDate: request.returnDate,
+    });
+
     return {
       currency: "EUR",
       searchId: createSearchId(),
@@ -42,6 +50,13 @@ export async function runSearch(
   cache.set(cacheKey, {
     currency: "EUR",
     results: normalized.results,
+  });
+
+  registerDealSearchContexts(normalized.results, {
+    origin: request.origin,
+    destination: request.destination,
+    departureDate: request.departureDate,
+    returnDate: request.returnDate,
   });
 
   return {

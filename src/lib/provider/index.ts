@@ -3,9 +3,14 @@ import { createSerpApiFlightProvider } from "@/lib/provider/serpapi";
 
 export type {
   FlightProvider,
+  ProviderBookingOption,
+  ProviderBookingRequest,
+  ProviderDealResolutionRequest,
+  ProviderDealResolutionResult,
   ProviderItinerary,
   ProviderJourney,
   ProviderLayoverHint,
+  ProviderResolvedDestination,
   ProviderSearchParams,
   ProviderSearchResult,
   ProviderSegment,

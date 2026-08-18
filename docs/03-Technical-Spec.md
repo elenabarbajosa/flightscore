@@ -121,7 +121,7 @@ Requirements:
         ]
       },
       "inbound": null,
-      "deepLink": "https://..."
+      "dealReference": "opaque-provider-reference"
     }
   ]
 }
@@ -132,6 +132,7 @@ Requirements:
 **Field notes:**
 
 - `searchId` — generated per request for **internal tracing/logging only**; not used by the client for business logic.
+- `dealReference` — opaque provider-neutral reference for lazy server-side deal resolution. **Not a booking URL.** The client may hold it in memory to call `POST /api/deal`, but must not render it in the DOM, URLs, tooltips, or logs.
 - `connectionType` — `"DOMESTIC" | "SCHENGEN" | "INTERNATIONAL"`; see functional spec section 6.
 - Segment carriers — UI displays **`operatingCarrier`** as the primary airline. If `operatingCarrier` is missing, fall back to `marketingCarrier`. When both exist and differ, display `operatingCarrier`.
 - Layover `durationMinutes` — computed server-side from timezone-aware ISO timestamps as elapsed time between segment arrival and next departure.
@@ -149,6 +150,57 @@ The server **must never propagate the raw SerpApi error body or raw SerpApi payl
 
 ---
 
+### `POST /api/deal`
+
+Resolves a selected itinerary's opaque `dealReference` into a safe external HTTPS booking destination. FlightScore remains a search/rank/redirect product: booking completion happens on the airline or OTA site.
+
+**Request:**
+
+```json
+{
+  "dealReference": "opaque-provider-reference"
+}
+```
+
+The token must be sent in the POST body only. Never place it in URL query strings.
+
+**200 response:**
+
+```json
+{
+  "redirectUrl": "https://airline.example/book",
+  "sellerName": "Example Air"
+}
+```
+
+The response must not include raw provider payloads, booking tokens, `post_data`, or Google click-tracker internals.
+
+**Errors:**
+
+| Code | HTTP | Situation |
+|---|---|---|
+| `INVALID_INPUT` | 400 | Missing or malformed `dealReference` |
+| `DEAL_UNAVAILABLE` | 404 | No resolvable booking options, separate-ticket-only itinerary, or redirect could not be validated |
+| `DEAL_EXPIRED` | 410 | Booking token no longer valid |
+| `QUOTA_EXCEEDED` | 429 | Provider quota exhausted |
+| `PROVIDER_ERROR` | 502 | Provider failure |
+| `TIMEOUT` | 504 | Provider or redirect timeout |
+| `INTERNAL_ERROR` | 500 | Unexpected server failure |
+
+**Booking-option selection policy (MVP):**
+
+1. Lowest effective EUR price first (`local_prices` EUR, else option price).
+2. If tied, prefer airline-direct (`airline: true`).
+3. If still tied, stable alphabetical `book_with`.
+
+**Redirect resolution:** after POST/GET to the validated Google booking URL, the server follows HTTP redirect hops and validated HTML `meta refresh` targets. Some OTAs respond with HTTP 403 to server-side clients while still exposing a valid HTTPS landing URL; those destinations are accepted when URL validation passes.
+
+**Cost control:** a View deal click triggers at most one SerpApi booking-options lookup on cache miss. Search, scoring, presets, sliders, and Show more trigger zero booking-option calls.
+
+**Rate limiting note:** `/api/deal` must be rate-limited before public production launch. Full per-IP rate limiting may be implemented during F4, but the route must remain structured so limits can be added cleanly.
+
+---
+
 ## 4. Cache
 
 All cache access goes through **`lib/cache.ts`**. Callers pass a structured key; the module handles TTL and storage.
@@ -163,6 +215,10 @@ All cache access goes through **`lib/cache.ts`**. Callers pass a structured key;
 - `cabinClass`
 
 **TTL:** 30 minutes (configurable via `CACHE_TTL_SECONDS`).
+
+**Deal resolution cache:** successful View deal resolutions are cached separately in `lib/deal/cache.ts` for 5 minutes, keyed by a cryptographic hash of `dealReference`. Only `{ redirectUrl, sellerName }` is stored.
+
+**Deal search-context cache:** when `/api/search` returns itineraries, the server registers each non-null `dealReference` in `lib/deal/context-cache.ts` with the originating route context (`origin`, `destination`, `departureDate`, optional `returnDate`). SerpApi booking-options lookups require this context in addition to the opaque token. TTL matches the search cache (`CACHE_TTL_SECONDS`). If context is missing, the server may fall back to parsing embedded segment data from one-way booking tokens before failing with `DEAL_UNAVAILABLE`.
 
 **Initial implementation:** use the simplest viable backing store behind the abstraction (e.g. in-process memory). Upgrade the implementation later without changing route handlers or key structure.
 
@@ -218,8 +274,10 @@ Suggested logical structure (exact filenames may adapt to standard Next.js conve
 | Module | Responsibility | Must not do |
 |---|---|---|
 | `app/api/search/route.ts` | HTTP entry point, validation, orchestration | Scoring logic |
+| `app/api/deal/route.ts` | Lazy deal resolution and safe external redirect lookup | Scoring; booking completion |
 | `lib/provider/index.ts` | Provider interface and SerpApi implementation wiring | UI logic |
-| `lib/provider/serpapi.ts` | SerpApi authentication and Google Flights API calls | Scoring; must not expose raw responses to UI |
+| `lib/provider/serpapi/*` | SerpApi authentication, Google Flights search, booking-options lookup, redirect resolution | Scoring; must not expose raw responses to UI |
+| `lib/deal/*` | Deal validation, booking-option selection, redirect safety, deal cache | UI logic |
 | `lib/normalize.ts` | Convert SerpApi responses into the internal contract; EUR normalization; layover and `connectionType` derivation | Make unrelated network calls; must not pass raw SerpApi shapes to callers |
 | `lib/cache.ts` | Get/set with TTL using the cache key contract | Know UI behavior |
 | `lib/scoring.ts` | Normalization, weighting, penalties, sorting, top-5 risky prioritization | Make network calls or manipulate UI |
@@ -237,7 +295,9 @@ Suggested logical structure (exact filenames may adapt to standard Next.js conve
 - SerpApi credentials live **only** in server-side environment variables. Never expose them in the browser bundle or repository.
 - The repository includes `.env.example` with variable names and no secret values.
 - `/api/search` validates and sanitizes all input before use.
-- **Rate limiting is an MVP security requirement:** 30 searches per IP / 10 minutes. May be implemented during **F4** but must be present before final delivery.
+- `/api/deal` validates opaque `dealReference` input, resolves booking options server-side only, validates every redirect hop, and returns only safe external HTTPS destinations.
+- Redirect safety: HTTPS-only destinations, DNS-aware SSRF checks, blocked private/internal/metadata addresses, and no client-supplied destination URLs.
+- **Rate limiting is an MVP security requirement:** 30 searches per IP / 10 minutes. `/api/deal` must also be rate-limited before public production launch; full implementation may be added during **F4**.
 - Use same-origin server routes; do not expose SerpApi credentials through CORS or client requests.
 - No cookies or storage of personal data in the MVP.
 - Add hard controls / alerts around SerpApi quota to prevent unexpected spending.

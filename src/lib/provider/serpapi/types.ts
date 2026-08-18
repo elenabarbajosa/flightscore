@@ -50,9 +50,40 @@ export interface SerpApiGoogleFlightsResponse {
   search_parameters?: Record<string, unknown>;
   best_flights?: SerpApiFlightOffer[];
   other_flights?: SerpApiFlightOffer[];
+  booking_options?: SerpApiBookingOptionEntry[];
   price_insights?: Record<string, unknown>;
   airports?: Record<string, unknown>[];
   error?: string;
+}
+
+export interface SerpApiBookingRequest {
+  url?: string;
+  post_data?: string;
+}
+
+export interface SerpApiBookingOptionBlock {
+  book_with?: string;
+  airline?: boolean;
+  airline_logos?: string[];
+  marketed_as?: string[];
+  price?: number;
+  local_prices?: Array<{
+    currency?: string;
+    price?: number;
+  }>;
+  option_title?: string;
+  extensions?: string[];
+  baggage_prices?: string[];
+  booking_request?: SerpApiBookingRequest;
+  booking_phone?: string;
+  estimated_phone_service_fee?: number;
+}
+
+export interface SerpApiBookingOptionEntry {
+  separate_tickets?: boolean;
+  together?: SerpApiBookingOptionBlock;
+  departing?: SerpApiBookingOptionBlock;
+  returning?: SerpApiBookingOptionBlock;
 }
 
 export type SerpApiQueryParams = Record<string, string>;

@@ -46,7 +46,7 @@
 | T-16 | Add one-click presets (Cheapest / Balanced / Fastest) | F3 | US-02 |
 | T-17 | Add expandable score breakdown | F3 | US-03 |
 | T-18 | Add **Show tight connections** toggle | F3 | US-04 |
-| T-19 | Build complete flight-result cards (operating-carrier fallback, Show more for results beyond 30) | F3 | US-05 |
+| T-19 | Build complete flight-result cards (operating-carrier fallback, Show more for results beyond 30, View deal redirect) | F3 | US-05 |
 | T-20 | Add visual indicators for risky connections and long layovers | F3 | US-04 |
 | T-21 | Add loading, empty, and error states | F3 | US-06 |
 | T-22 | Ensure responsive design from 375 px | F3 | — |

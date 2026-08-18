@@ -3,7 +3,9 @@ export type ProviderErrorCode =
   | "PROVIDER_REQUEST_FAILED"
   | "PROVIDER_TIMEOUT"
   | "PROVIDER_QUOTA_EXCEEDED"
-  | "PROVIDER_INVALID_RESPONSE";
+  | "PROVIDER_INVALID_RESPONSE"
+  | "PROVIDER_DEAL_EXPIRED"
+  | "PROVIDER_NO_BOOKING_OPTIONS";
 
 export class ProviderError extends Error {
   readonly code: ProviderErrorCode;

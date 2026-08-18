@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+@theme {
+  --color-accent: #0c6460;
+  --color-accent-soft: #e8f4f3;
+  --color-accent-muted: #5a9e99;
+  --color-surface: #fafafa;
+  --color-border: #e5e5e5;
+}
+
 body {
   font-family:
     system-ui,
@@ -7,4 +15,86 @@ body {
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  background-color: var(--color-surface);
+  color: #171717;
+}
+
+@layer components {
+  .fs-label {
+    @apply text-[11px] font-medium uppercase tracking-[0.08em] text-neutral-500;
+  }
+
+  .fs-input {
+    @apply h-9 w-full rounded-md border border-neutral-200 bg-white px-2.5 text-sm text-neutral-900 outline-none transition;
+    @apply placeholder:text-neutral-400 focus:border-accent focus:ring-2 focus:ring-accent/15;
+  }
+
+  .fs-input-code {
+    @apply font-semibold uppercase tracking-[0.12em];
+  }
+
+  .fs-search-surface {
+    @apply overflow-hidden rounded-xl border border-neutral-200/90 bg-white;
+  }
+
+  .fs-panel {
+    @apply rounded-xl border border-neutral-200/90 bg-white;
+  }
+
+  .fs-range {
+    @apply h-1.5 w-full cursor-pointer appearance-none rounded-full bg-neutral-200;
+  }
+
+  .fs-range::-webkit-slider-thumb {
+    @apply h-3.5 w-3.5 cursor-pointer appearance-none rounded-full border-2 border-white shadow-sm;
+    background-color: var(--color-accent);
+  }
+
+  .fs-range::-moz-range-thumb {
+    @apply h-3.5 w-3.5 cursor-pointer rounded-full border-2 border-white shadow-sm;
+    background-color: var(--color-accent);
+  }
+
+  .fs-range::-webkit-slider-runnable-track {
+    @apply h-1.5 rounded-full;
+    background: linear-gradient(
+      to right,
+      var(--color-accent) 0%,
+      var(--color-accent) var(--fs-range-progress, 50%),
+      #e5e5e5 var(--fs-range-progress, 50%),
+      #e5e5e5 100%
+    );
+  }
+
+  .fs-toggle {
+    @apply relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border border-neutral-200 bg-neutral-200 transition;
+  }
+
+  .fs-toggle::after {
+    @apply absolute left-0.5 h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform content-[''];
+  }
+
+  .peer:checked + .fs-toggle {
+    @apply border-accent bg-accent;
+  }
+
+  .peer:checked + .fs-toggle::after {
+    transform: translateX(1rem);
+  }
+
+  .fs-preset-group {
+    @apply flex rounded-lg border border-neutral-200 bg-neutral-50 p-0.5;
+  }
+
+  .fs-score-badge {
+    @apply inline-flex items-center gap-1 rounded-md bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent;
+  }
+
+  .fs-route-line {
+    @apply text-[11px] font-medium tracking-wide text-neutral-500;
+  }
+
+  .fs-route-dot {
+    @apply inline-block h-1 w-1 rounded-full bg-accent-muted;
+  }
 }

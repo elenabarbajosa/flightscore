@@ -27,6 +27,8 @@ describe("runSearch", () => {
   it("calls the provider on cache miss and stores normalized results", async () => {
     const provider: FlightProvider = {
       search: vi.fn().mockResolvedValue(oneWayFixture),
+      resolveDeal: vi.fn(),
+      resolveBookingDestination: vi.fn(),
     };
     const cache = createSearchCacheForTests(1800);
     let searchIdCount = 0;
@@ -57,6 +59,8 @@ describe("runSearch", () => {
   it("does not call the provider on cache hit", async () => {
     const provider: FlightProvider = {
       search: vi.fn().mockResolvedValue({ currency: "EUR", itineraries: [] }),
+      resolveDeal: vi.fn(),
+      resolveBookingDestination: vi.fn(),
     };
     const cache = createSearchCacheForTests(1800);
     const key = buildSearchCacheKey(baseRequest);
@@ -73,6 +77,8 @@ describe("runSearch", () => {
   it("uses ONE_WAY in the cache key for one-way searches", async () => {
     const provider: FlightProvider = {
       search: vi.fn().mockResolvedValue({ currency: "EUR", itineraries: [] }),
+      resolveDeal: vi.fn(),
+      resolveBookingDestination: vi.fn(),
     };
     const cache = createSearchCacheForTests(1800);
 

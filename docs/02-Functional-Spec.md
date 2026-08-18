@@ -93,7 +93,7 @@ The results area appears after the first search. The MVP should remain focused a
 - [ ] Each result card shows: total price, total door-to-door duration, number of stops and stop airports, operating airline(s), departure and arrival times, and a next-day arrival indicator (+1) where applicable.
 - [ ] The **operating airline** is displayed as the primary airline; if `operatingCarrier` is missing, fall back to `marketingCarrier`; when both exist and differ, show `operatingCarrier`.
 - [ ] Round-trip itineraries show outbound and inbound journeys separately.
-- [ ] An outbound **View deal** / booking link opens the airline or OTA in a new tab.
+- [ ] An outbound **View deal** action resolves the itinerary server-side and opens the airline or OTA booking flow in a new tab. FlightScore does not complete bookings internally.
 - [ ] All valid returned results are scored client-side; the first **30** are rendered initially. **Show more** reveals additional already-scored results without a new SerpApi search.
 
 ---

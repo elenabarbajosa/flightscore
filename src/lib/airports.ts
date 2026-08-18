@@ -1,4 +1,4 @@
-import airportsData from "@/data/airports.json";
+import autocompleteData from "@/data/airports-autocomplete.json";
 
 export interface Airport {
   iata: string;
@@ -7,20 +7,13 @@ export interface Airport {
   countryCode: string;
   latitude: number;
   longitude: number;
+  timeZone: string;
 }
 
-const airports = airportsData as Airport[];
-
-const airportsByIata = new Map(
-  airports.map((airport) => [airport.iata.toUpperCase(), airport]),
-);
+const airports = autocompleteData as Airport[];
 
 export function getAirports(): readonly Airport[] {
   return airports;
-}
-
-export function getAirportByIata(iata: string): Airport | undefined {
-  return airportsByIata.get(iata.trim().toUpperCase());
 }
 
 export function searchAirports(query: string, limit = 8): Airport[] {

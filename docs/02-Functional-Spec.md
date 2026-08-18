@@ -198,29 +198,28 @@ When **Show tight connections** is enabled, skip steps 2–4 and use normal scor
 
 ## 6. Connection classification
 
-Each layover includes a `connectionType` used to evaluate risky-connection thresholds:
+Each layover includes a `connectionType` used to evaluate risky-connection thresholds.
+
+For a connection between an incoming segment **A → HUB** and an outgoing segment **HUB2 → B**, normalization considers the countries of **A**, **HUB**, **HUB2**, and **B**. When there is no airport change, **HUB** and **HUB2** are the same airport.
 
 | Value | Threshold | Description |
 |---|---|---|
-| `DOMESTIC` | 60 min | Both airports are in the same country. |
-| `SCHENGEN` | 60 min | Airports are in different Schengen member states. |
-| `INTERNATIONAL` | 90 min | All other cross-border connections. |
+| `DOMESTIC` | 60 min | All relevant airports are in the same country. |
+| `SCHENGEN` | 60 min | All relevant airports are in Schengen countries, but not all in the same country. |
+| `INTERNATIONAL` | 90 min | Any relevant airport is outside the Schengen area, or the connection spans Schengen and non-Schengen countries. |
 
-Classification is determined during normalization from segment endpoints and airport `countryCode` metadata in the static dataset. Maintain an explicit Schengen member **country-code set in code**; determine an airport’s Schengen status from its `countryCode`.
+`airportChange` is determined independently (`HUB !== HUB2`) and may stack with risky-connection penalties later.
+
+Classification uses airport `countryCode` metadata from the static airport dataset and the explicit Schengen member **country-code set in code**.
 
 ---
 
 ## 7. Static airport dataset
 
-The local/static airport dataset supports autocomplete and connection classification.
+The local/static airport metadata supports normalization and, separately, autocomplete.
 
-**Minimum fields per airport:**
+**Normalization dataset:** comprehensive offline IATA airport records with `iata`, `name`, `city`, `countryCode`, `latitude`, `longitude`, and `timeZone`.
 
-| Field | Purpose |
-|---|---|
-| `iata` | Airport code lookup and display |
-| `name` | Autocomplete label |
-| `city` | Autocomplete label |
-| `countryCode` | Domestic / Schengen / international connection classification |
-| `latitude` | Optional future use; bundled for completeness |
-| `longitude` | Optional future use; bundled for completeness |
+**Autocomplete dataset:** smaller curated subset for the MVP search form. A broader commercial-airport index may replace this later without changing normalization.
+
+Maintain an explicit Schengen member **country-code set in code**; determine an airport’s Schengen status from its `countryCode`.

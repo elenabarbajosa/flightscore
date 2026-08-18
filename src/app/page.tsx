@@ -1,4 +1,5 @@
 import { airportCount } from "@/lib/airports";
+import { airportMetadataCount } from "@/lib/airport-metadata";
 import { mockItineraryCount } from "@/lib/mock/itineraries";
 import { getSchengenCountryCodes } from "@/lib/schengen";
 
@@ -17,8 +18,12 @@ export default function HomePage() {
       </p>
       <dl className="mt-8 space-y-3 border-t border-neutral-200 pt-6 text-sm text-neutral-700">
         <div className="flex justify-between gap-4">
-          <dt>Airports loaded</dt>
+          <dt>Autocomplete airports</dt>
           <dd className="font-medium text-neutral-900">{airportCount}</dd>
+        </div>
+        <div className="flex justify-between gap-4">
+          <dt>Airport metadata records</dt>
+          <dd className="font-medium text-neutral-900">{airportMetadataCount}</dd>
         </div>
         <div className="flex justify-between gap-4">
           <dt>Mock itineraries</dt>

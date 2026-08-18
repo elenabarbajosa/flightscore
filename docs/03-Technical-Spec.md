@@ -193,9 +193,19 @@ Risky itineraries remain valid. Invalid itineraries are excluded before scoring.
 
 ## 7. Static airport dataset
 
-Bundled local/static dataset for autocomplete and connection classification.
+FlightScore uses bundled local airport metadata for normalization and a separate smaller autocomplete index for the UI.
 
-**Minimum fields:** `iata`, `name`, `city`, `countryCode`, `latitude`, `longitude`.
+**Normalization dataset (`src/data/airports.json`):**
+
+- Source: [OurAirports](https://ourairports.com/data/) `airports.csv` (Public Domain)
+- Retained entries: airports with a valid 3-character IATA code (approximately 8,000–9,000 records)
+- Fields: `iata`, `name`, `city`, `countryCode`, `latitude`, `longitude`, `timeZone` (IANA ID derived offline from coordinates)
+- Lookup: `lib/airport-metadata.ts` (local/offline, no runtime network calls)
+
+**Autocomplete dataset (`src/data/airports-autocomplete.json`):**
+
+- Small curated subset for MVP search-form autocomplete
+- Full commercial-airport indexing can replace this later without changing normalization
 
 Maintain an explicit **Schengen member country-code set in code** (e.g. `lib/schengen.ts`). Determine an airport’s Schengen status from its `countryCode`.
 
@@ -214,7 +224,8 @@ Suggested logical structure (exact filenames may adapt to standard Next.js conve
 | `lib/cache.ts` | Get/set with TTL using the cache key contract | Know UI behavior |
 | `lib/scoring.ts` | Normalization, weighting, penalties, sorting, top-5 risky prioritization | Make network calls or manipulate UI |
 | `lib/schengen.ts` | Explicit Schengen country-code set and lookup helpers | UI logic |
-| `lib/airports.ts` (or `data/airports.json`) | Static airport dataset and lookup helpers for autocomplete | Call SerpApi |
+| `lib/airport-metadata.ts` / `data/airports.json` | Comprehensive offline airport metadata for normalization | Call SerpApi |
+| `lib/airports.ts` / `data/airports-autocomplete.json` | Autocomplete helpers for the search UI | Own normalization rules |
 | `components/*` | Search form, preference controls, result cards | Own business rules |
 
 **Rule:** replacing SerpApi should require changes only inside `lib/provider/` and, where SerpApi response shape requires it, `lib/normalize.ts`.

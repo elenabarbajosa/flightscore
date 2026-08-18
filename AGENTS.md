@@ -133,3 +133,12 @@ Prioritize:
 - clear pricing
 - readable route information
 - subtle score/risk indicators
+
+## Git and commits
+
+- Use Conventional Commits for all Git commits.
+- Format: `<type>(optional scope): <description>`
+- Use lowercase imperative descriptions.
+- Keep commits focused and atomic.
+- Do not combine unrelated changes in one commit.
+- Preferred types: feat, fix, docs, test, refactor, style, chore, perf, ci.

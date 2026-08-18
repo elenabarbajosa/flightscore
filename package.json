@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build:airports": "node scripts/build-airports.mjs"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "next": "16.3.1",
     "react": "19.2.8",
     "react-dom": "19.2.8"
@@ -21,7 +24,9 @@
     "eslint": "^9.39.0",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "tz-lookup": "^6.1.25",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20"

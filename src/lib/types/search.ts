@@ -48,7 +48,8 @@ export interface Itinerary {
   stopCount: number;
   outbound: Journey;
   inbound: Journey | null;
-  deepLink: string;
+  /** Opaque provider-neutral reference for lazy server-side deal resolution. Not a booking URL. */
+  dealReference: string | null;
 }
 
 export interface SearchResponse {

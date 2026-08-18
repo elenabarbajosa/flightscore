@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "build:airports": "node scripts/build-airports.mjs"
+    "build:airports": "node scripts/build-airports.mjs",
+    "build:airports-autocomplete": "node scripts/build-airports-autocomplete.mjs"
   },
   "dependencies": {
     "@js-temporal/polyfill": "^0.5.1",

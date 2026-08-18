@@ -1,6 +1,6 @@
 # Technical Specification — Optimized Flight Search
 
-**Version:** 1.3  
+**Version:** 1.4  
 **Date:** August 18, 2026  
 **Associated documents:** 01-PRD.md, 02-Functional-Spec.md
 
@@ -20,14 +20,16 @@ Browser
 Next.js server-side route / server function
    │  ├── validates input
    │  ├── checks cache (lib/cache.ts)
-   │  ├── calls the selected flight-data provider
-   │  ├── normalizes itineraries (incl. EUR, layovers, connectionType)
+   │  ├── calls SerpApi Google Flights API (server-side only)
+   │  ├── normalizes itineraries into the internal contract
    │  └── returns normalized JSON
    ▼
-Flight-data provider
+SerpApi (Google Flights API)
 ```
 
-**Design principle:** the server returns **normalized but unscored itineraries**. All valid results are scored in the browser so that changing a preference weight reorders the list without a network round trip (< 300 ms requirement).
+**Design principle:** the server returns **normalized but unscored itineraries**. All valid results are scored in the browser so that changing a preference weight reorders the list without a SerpApi round trip (< 300 ms requirement). Weight changes must **never** trigger a new SerpApi search.
+
+The UI and scoring engine must **never** depend directly on SerpApi response shapes. Raw SerpApi responses are normalized server-side into the internal FlightScore contract before reaching the client.
 
 The product is a responsive **web app** built with Next.js. It must work well as a conventional website in the browser. **PWA support and native iOS or Android applications are outside the MVP.**
 
@@ -43,24 +45,23 @@ The product is a responsive **web app** built with Next.js. It must work well as
 | Server | Next.js route handlers / server-side functions on Node.js 20+ | No separately managed server required |
 | Hosting | Vercel (preferred for MVP) | Direct Next.js support, Git deployment, free tier suitable for early validation |
 | Cache | **`lib/cache.ts` abstraction**; start with the simplest viable implementation | Avoid premature infrastructure; swap backing store without changing callers |
-| Airport autocomplete | **Local/static airport dataset** bundled with the app | Avoid paid provider usage for lookup; sufficient for MVP |
-| Flight data | **Provider selected during implementation** behind a provider abstraction | Avoid hard dependency on a single supplier |
+| Airport autocomplete | **Local/static airport dataset** bundled with the app | Independent of SerpApi; sufficient for MVP |
+| Flight data | **SerpApi using the Google Flights API** behind a provider abstraction | Selected MVP provider; replaceable later |
 
-### Flight-data provider policy
+### SerpApi provider policy
 
-No provider is a permanent architectural dependency.
+The MVP flight-data provider is **SerpApi using the Google Flights API**.
 
-The initial provider should be selected based on:
+Requirements:
 
-- access for a small MVP,
-- current pricing / free allowance,
-- coverage of long-haul routes,
-- quality and completeness of itinerary data,
-- availability of prices and outbound booking links,
-- ability to request or return EUR pricing,
-- implementation complexity.
-
-All provider-specific authentication, request construction, and response parsing must remain isolated. Changing the provider must not require modifications to the scoring engine or UI.
+- All SerpApi requests are made **server-side only**.
+- The SerpApi API key must remain in server-side environment variables and must never appear in client code, browser requests, public logs, or the repository.
+- Raw SerpApi response objects must **never** be passed directly to the UI or scoring engine.
+- SerpApi responses must be normalized into the internal FlightScore itinerary contract before leaving the server.
+- Provider-specific authentication, request construction, and response parsing must remain isolated in `lib/provider/`.
+- Changing the provider later must not require modifications to the scoring engine or UI.
+- SerpApi is the MVP provider choice; it is **not** a permanent architectural dependency.
+- Airport autocomplete remains on the local/static dataset and must not call SerpApi.
 
 ---
 
@@ -144,7 +145,7 @@ All provider-specific authentication, request construction, and response parsing
 | 502 | Provider failure | `{ "error": "PROVIDER_ERROR" }` |
 | 504 | Timeout (> 15 s) | `{ "error": "TIMEOUT" }` |
 
-The server **must never propagate the raw provider error body to the client**.
+The server **must never propagate the raw SerpApi error body or raw SerpApi payload to the client**.
 
 ---
 
@@ -170,10 +171,10 @@ All cache access goes through **`lib/cache.ts`**. Callers pass a structured key;
 ## 5. Currency
 
 - All prices returned to the client are **EUR**.
-- Request **EUR directly from the provider** whenever the API supports it.
-- If the provider supports its own currency conversion, **use that conversion**.
-- Do **not** add a separate FX service during the MVP unless the selected provider makes it necessary.
-- Any provider-specific conversion logic stays in **`lib/normalize.ts`** or the provider adapter.
+- Request **EUR directly from SerpApi / Google Flights** whenever the API supports it.
+- If SerpApi supports its own currency conversion, **use that conversion**.
+- Do **not** add a separate FX service during the MVP unless SerpApi makes it necessary.
+- Any SerpApi-specific conversion logic stays in **`lib/normalize.ts`** or the SerpApi provider adapter.
 
 ---
 
@@ -207,40 +208,38 @@ Suggested logical structure (exact filenames may adapt to standard Next.js conve
 | Module | Responsibility | Must not do |
 |---|---|---|
 | `app/api/search/route.ts` | HTTP entry point, validation, orchestration | Scoring logic |
-| `lib/provider/index.ts` | Provider interface and selected implementation wiring | UI logic |
-| `lib/provider/<provider>.ts` | Provider authentication and network calls | Scoring |
-| `lib/normalize.ts` | Convert provider response into the internal contract; EUR normalization; layover and `connectionType` derivation | Make unrelated network calls |
+| `lib/provider/index.ts` | Provider interface and SerpApi implementation wiring | UI logic |
+| `lib/provider/serpapi.ts` | SerpApi authentication and Google Flights API calls | Scoring; must not expose raw responses to UI |
+| `lib/normalize.ts` | Convert SerpApi responses into the internal contract; EUR normalization; layover and `connectionType` derivation | Make unrelated network calls; must not pass raw SerpApi shapes to callers |
 | `lib/cache.ts` | Get/set with TTL using the cache key contract | Know UI behavior |
 | `lib/scoring.ts` | Normalization, weighting, penalties, sorting, top-5 risky prioritization | Make network calls or manipulate UI |
 | `lib/schengen.ts` | Explicit Schengen country-code set and lookup helpers | UI logic |
-| `lib/airports.ts` (or `data/airports.json`) | Static airport dataset and lookup helpers for autocomplete | Call paid provider APIs |
+| `lib/airports.ts` (or `data/airports.json`) | Static airport dataset and lookup helpers for autocomplete | Call SerpApi |
 | `components/*` | Search form, preference controls, result cards | Own business rules |
 
-**Rule:** changing flight-data provider should require changes only inside `lib/provider/` and, where provider response shape requires it, `lib/normalize.ts`.
+**Rule:** replacing SerpApi should require changes only inside `lib/provider/` and, where SerpApi response shape requires it, `lib/normalize.ts`.
 
 ---
 
 ## 9. Security
 
-- Provider credentials live **only** in server-side environment variables. Never expose them in the browser bundle or repository.
+- SerpApi credentials live **only** in server-side environment variables. Never expose them in the browser bundle or repository.
 - The repository includes `.env.example` with variable names and no secret values.
 - `/api/search` validates and sanitizes all input before use.
 - **Rate limiting is an MVP security requirement:** 30 searches per IP / 10 minutes. May be implemented during **F4** but must be present before final delivery.
-- Use same-origin server routes; do not expose provider credentials through CORS or client requests.
+- Use same-origin server routes; do not expose SerpApi credentials through CORS or client requests.
 - No cookies or storage of personal data in the MVP.
-- Add hard controls / alerts around upstream API quota to prevent unexpected spending.
+- Add hard controls / alerts around SerpApi quota to prevent unexpected spending.
 
-**Environment variables (provider-agnostic baseline):**
+**Environment variables (MVP baseline):**
 
 ```text
-FLIGHT_PROVIDER
-FLIGHT_API_KEY
-FLIGHT_API_SECRET
-FLIGHT_API_BASE_URL
+SERPAPI_API_KEY
+SERPAPI_ENGINE=google_flights
 CACHE_TTL_SECONDS
 ```
 
-The selected provider may require additional variables. They must remain server-side and be documented in `.env.example`.
+Additional SerpApi or application variables may be required. They must remain server-side and be documented in `.env.example`.
 
 ---
 
@@ -249,12 +248,12 @@ The selected provider may require additional variables. They must remain server-
 | Requirement | Target |
 |---|---|
 | Complete search (p95) | < 5 s |
-| Score recalculation after moving a weight | < 300 ms, no network request |
+| Score recalculation after moving a weight | < 300 ms, no SerpApi request |
 | Initial bundle | Keep as small as practical; avoid unnecessary dependencies |
 | Results processed in browser | Score all valid returned itineraries; up to 200 without perceptible degradation |
 | Results rendered initially | First 30; **Show more** reveals additional already-scored results |
 
-Recalculation must operate on data already held in memory. If UI input becomes noticeably expensive, apply a small debounce (e.g. 50 ms) to preference controls without introducing network requests.
+Recalculation must operate on data already held in memory. If UI input becomes noticeably expensive, apply a small debounce (e.g. 50 ms) to preference controls without introducing SerpApi requests.
 
 ---
 
@@ -275,5 +274,5 @@ Recalculation must operate on data already held in memory. If UI input becomes n
 2. `README.md` with requirements, local installation, environment variables, development commands, and deployment instructions.
 3. `.env.example`.
 4. Deployed application accessible by URL.
-5. Unit tests for **`lib/scoring.ts`** and **`lib/normalize.ts`** (minimum: equal-value normalization, accumulated/stacked penalties, tie-breaking, top-5 risky prioritization edge cases, layover duration from timestamps, `connectionType` classification, EUR handling via provider conversion).
+5. Unit tests for **`lib/scoring.ts`** and **`lib/normalize.ts`** (minimum: equal-value normalization, accumulated/stacked penalties, tie-breaking, top-5 risky prioritization edge cases, layover duration from timestamps, `connectionType` classification, EUR handling via SerpApi/provider conversion). Normalization tests must use fixtures or mock SerpApi responses; tests must not depend on live paid API calls.
 6. Short note documenting technical decisions and known limitations.

@@ -1,6 +1,6 @@
 # Functional Specification — Optimized Flight Search
 
-**Version:** 1.3  
+**Version:** 1.4  
 **Date:** August 18, 2026  
 **Associated document:** 01-PRD.md
 
@@ -32,7 +32,7 @@ The results area appears after the first search. The MVP should remain focused a
 
 **Acceptance criteria:**
 
-- [ ] Origin and destination accept a city name or IATA code, with autocomplete backed by a **local/static airport dataset** (not the paid flight provider).
+- [ ] Origin and destination accept a city name or IATA code, with autocomplete backed by a **local/static airport dataset** (not SerpApi).
 - [ ] Return date is optional (one-way search is supported).
 - [ ] Return date cannot be earlier than departure date.
 - [ ] Past departure dates cannot be searched.
@@ -51,7 +51,7 @@ The results area appears after the first search. The MVP should remain focused a
 
 - [ ] There are three controls: **Price**, **Stops**, **Duration**, each ranging from 0 to 10.
 - [ ] Default values: Price 5, Stops 3, Duration 5.
-- [ ] Moving a control reorders the list in under 300 ms without a new API call.
+- [ ] Moving a control reorders the list in under 300 ms without a new SerpApi search.
 - [ ] Three one-click presets exist: *Cheapest*, *Balanced*, *Fastest*.
 - [ ] If all three weights are 0, a warning is shown and the last valid ordering is retained.
 
@@ -94,7 +94,7 @@ The results area appears after the first search. The MVP should remain focused a
 - [ ] The **operating airline** is displayed as the primary airline; if `operatingCarrier` is missing, fall back to `marketingCarrier`; when both exist and differ, show `operatingCarrier`.
 - [ ] Round-trip itineraries show outbound and inbound journeys separately.
 - [ ] An outbound **View deal** / booking link opens the airline or OTA in a new tab.
-- [ ] All valid returned results are scored client-side; the first **30** are rendered initially. **Show more** reveals additional already-scored results without a new API call.
+- [ ] All valid returned results are scored client-side; the first **30** are rendered initially. **Show more** reveals additional already-scored results without a new SerpApi search.
 
 ---
 
@@ -104,10 +104,10 @@ The results area appears after the first search. The MVP should remain focused a
 
 **Acceptance criteria:**
 
-- [ ] If the API returns no results, show an explanatory message and suggest changing dates or airport.
-- [ ] If the provider fails or quota is exhausted, show a non-technical message and a retry option.
+- [ ] If SerpApi returns no results, show an explanatory message and suggest changing dates or airport.
+- [ ] If SerpApi fails or quota is exhausted, show a non-technical message and a retry option.
 - [ ] If the search exceeds 15 s, cancel it and inform the user.
-- [ ] No error exposes stack traces, provider payloads, or credentials.
+- [ ] No error exposes stack traces, SerpApi payloads, or credentials.
 
 ---
 
@@ -119,7 +119,7 @@ The results area appears after the first search. The MVP should remain focused a
 | BR-02 | Risky connection: < 60 min when `connectionType` is `DOMESTIC` or `SCHENGEN`; < 90 min when `connectionType` is `INTERNATIONAL`; always risky if an airport change is required. |
 | BR-03 | Long layover: > 5 h between consecutive flights. Layover duration is calculated from timezone-aware ISO timestamps as elapsed time between segment arrival and the next segment departure. |
 | BR-04 | Only itineraries with a maximum of **2 stops per journey direction** (outbound and inbound evaluated separately) are considered. |
-| BR-05 | Prices are shown in euros, as the total for all passengers, including taxes. Request EUR directly from the provider whenever supported; if the provider supports its own currency conversion, use that. Do not add a separate FX service during the MVP unless the selected provider makes it necessary. |
+| BR-05 | Prices are shown in euros, as the total for all passengers, including taxes. Request EUR directly from SerpApi / Google Flights whenever supported; if the provider supports its own currency conversion, use that. Do not add a separate FX service during the MVP unless SerpApi makes it necessary. |
 | BR-06 | Prices are labeled as estimated; final confirmation is the responsibility of the end provider. |
 | BR-07 | Results are cached for 30 minutes using a key composed of origin, destination, departure date, return date (use the literal sentinel `"ONE_WAY"` when absent), passengers, and cabin class. |
 | BR-08 | The MVP user interface is English only. No localization or internationalization system is required. |
